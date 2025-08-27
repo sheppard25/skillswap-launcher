@@ -1,0 +1,3 @@
+@echo off
+echo Lancement de SpaceGravure...
+npm start
