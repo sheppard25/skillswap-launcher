@@ -1,22 +1,22 @@
 window.addEventListener('DOMContentLoaded', () => {
   // --- Constantes ---
-  const PALETTE_COLORS = {
-    '00': { hex: '#000000', name: 'Noir' }, '01': { hex: '#0000FF', name: 'Bleu' },
-    '02': { hex: '#FF0000', name: 'Rouge' }, '03': { hex: '#00E000', name: 'Vert' },
-    '04': { hex: '#D0D000', name: 'Jaune' }, '05': { hex: '#FF8000', name: 'Orange' },
-    '06': { hex: '#00E0E0', name: 'Cyan' }, '07': { hex: '#FF00FF', name: 'Magenta' },
-    '08': { hex: '#B4B4B4', name: 'Gris Clair' }, '09': { hex: '#0000A0', name: 'Bleu Foncé' },
-    '10': { hex: '#A00000', name: 'Rouge Foncé' }, '11': { hex: '#00A000', name: 'Vert Foncé' },
-    '12': { hex: '#A0A000', name: 'Jaune Foncé' }, '13': { hex: '#C08000', name: 'Marron' },
-    '14': { hex: '#00A0FF', name: 'Bleu Ciel' }, '15': { hex: '#A000A0', name: 'Violet' },
-    '16': { hex: '#808080', name: 'Gris Moyen' }, '17': { hex: '#7D87B9', name: 'Bleu Lavande' },
-    '18': { hex: '#BB7784', name: 'Vieux Rose' }, '19': { hex: '#4A6FE3', name: 'Bleu Royal' },
-    '20': { hex: '#D33F6A', name: 'Rose Vif' }, '21': { hex: '#8CD78C', name: 'Vert Pastel' },
-    '22': { hex: '#F0B98D', name: 'Pêche' }, '23': { hex: '#F6C4E1', name: 'Rose Pâle' },
-    '24': { hex: '#FA9ED4', name: 'Rose Bonbon' }, '25': { hex: '#500A78', name: 'Indigo' },
-    '26': { hex: '#B45A00', name: 'Ocre' }, '27': { hex: '#004754', name: 'Bleu Canard' },
-    '28': { hex: '#86FA88', name: 'Vert Fluo' }, '29': { hex: '#FFDB66', name: 'Jaune Pâle' }
-  };
+  const PALETTE_DATA = [
+    { index: '00', hex: '#000000', name: 'Noir' }, { index: '01', hex: '#0000FF', name: 'Bleu' },
+    { index: '02', hex: '#FF0000', name: 'Rouge' }, { index: '03', hex: '#00E000', name: 'Vert' },
+    { index: '04', hex: '#D0D000', name: 'Jaune' }, { index: '05', hex: '#FF8000', name: 'Orange' },
+    { index: '06', hex: '#00E0E0', name: 'Cyan' }, { index: '07', hex: '#FF00FF', name: 'Magenta' },
+    { index: '08', hex: '#B4B4B4', name: 'Gris Clair' }, { index: '09', hex: '#0000A0', name: 'Bleu Foncé' },
+    { index: '10', hex: '#A00000', name: 'Rouge Foncé' }, { index: '11', hex: '#00A000', name: 'Vert Foncé' },
+    { index: '12', hex: '#A0A000', name: 'Jaune Foncé' }, { index: '13', hex: '#C08000', name: 'Marron' },
+    { index: '14', hex: '#00A0FF', name: 'Bleu Ciel' }, { index: '15', hex: '#A000A0', name: 'Violet' },
+    { index: '16', hex: '#808080', name: 'Gris Moyen' }, { index: '17', hex: '#7D87B9', name: 'Bleu Lavande' },
+    { index: '18', hex: '#BB7784', name: 'Vieux Rose' }, { index: '19', hex: '#4A6FE3', name: 'Bleu Royal' },
+    { index: '20', hex: '#D33F6A', name: 'Rose Vif' }, { index: '21', hex: '#8CD78C', name: 'Vert Pastel' },
+    { index: '22', hex: '#F0B98D', name: 'Pêche' }, { index: '23', hex: '#F6C4E1', name: 'Rose Pâle' },
+    { index: '24', hex: '#FA9ED4', name: 'Rose Bonbon' }, { index: '25', hex: '#500A78', name: 'Indigo' },
+    { index: '26', hex: '#B45A00', name: 'Ocre' }, { index: '27', hex: '#004754', name: 'Bleu Canard' },
+    { index: '28', hex: '#86FA88', name: 'Vert Fluo' }, { index: '29', hex: '#FFDB66', name: 'Jaune Pâle' }
+  ];
 
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
@@ -54,37 +54,37 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- Initialisation & Rendu ---
   function populatePalette() {
-    for (const layerIndex in PALETTE_COLORS) {
+    PALETTE_DATA.forEach(colorData => {
       const swatch = document.createElement('div');
       swatch.classList.add('color-swatch');
-      swatch.style.backgroundColor = PALETTE_COLORS[layerIndex].hex;
-      swatch.dataset.layerIndex = layerIndex;
-      swatch.textContent = layerIndex; // Ajoute le numéro sur la case
-      if (layerIndex === activeLayer) swatch.classList.add('active');
+      swatch.style.backgroundColor = colorData.hex;
+      swatch.dataset.layerIndex = colorData.index;
+      swatch.textContent = colorData.index;
+      if (colorData.index === activeLayer) swatch.classList.add('active');
       swatch.addEventListener('click', () => {
-        activeLayer = layerIndex;
+        activeLayer = colorData.index;
         document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
         swatch.classList.add('active');
       });
       colorPalette.appendChild(swatch);
-    }
+    });
   }
 
   function renderLayerList() {
     layerList.innerHTML = '';
-    for (const layerIndex in project.layers) {
+    Object.keys(project.layers).sort().forEach(layerIndex => {
       const layer = project.layers[layerIndex];
+      const colorName = PALETTE_DATA.find(p => p.index === layerIndex).name;
       const layerDiv = document.createElement('div');
       layerDiv.className = 'layer-item';
-      // Remplacer les spans par des inputs pour l'édition
       layerDiv.innerHTML = `
         <div class="layer-color" style="background-color: ${layer.color}"></div>
-        <span>${PALETTE_COLORS[layerIndex].name}</span>
+        <span>${colorName}</span>
         <label>V: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="speed" value="${layer.speed}"></label>
         <label>P: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="power" value="${layer.power}"></label>
       `;
       layerList.appendChild(layerDiv);
-    }
+    });
   }
 
   function renderCanvas() {
@@ -93,6 +93,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     project.shapes.forEach(shape => {
       const layer = project.layers[shape.layerIndex];
+      if (!layer) return;
       ctx.strokeStyle = layer.color;
       ctx.lineWidth = 1;
       if (shape.type === 'rectangle') {
@@ -121,34 +122,25 @@ window.addEventListener('DOMContentLoaded', () => {
   function generateProjectGCode() {
     if (project.shapes.length === 0) return '';
     let gcode = ['G90', 'G21', '; --- Début du projet ---'];
-
-    // Group shapes by layer
     const shapesByLayer = {};
     project.shapes.forEach(shape => {
-      if (!shapesByLayer[shape.layerIndex]) {
-        shapesByLayer[shape.layerIndex] = [];
-      }
+      if (!shapesByLayer[shape.layerIndex]) shapesByLayer[shape.layerIndex] = [];
       shapesByLayer[shape.layerIndex].push(shape);
     });
 
-    for (const layerIndex in shapesByLayer) {
+    Object.keys(shapesByLayer).sort().forEach(layerIndex => {
       const layer = project.layers[layerIndex];
       gcode.push(`\n; Calque ${layerIndex} - Vitesse: ${layer.speed}, Puissance: ${layer.power}`);
       gcode.push(`M4 S${layer.power}`);
-
       shapesByLayer[layerIndex].forEach(shape => {
         let shapeGcode = [];
-        if (shape.type === 'rectangle') {
-          shapeGcode = getRectangleGcode(shape.params);
-        } else if (shape.type === 'circle') {
-          shapeGcode = getCircleGcode(shape.params);
-        }
-        // Add feed rate to all G1/G2/G3 moves
-        shapeGcode = shapeGcode.map(line => line.startsWith('G1') || line.startsWith('G2') || line.startsWith('G3') ? `${line} F${layer.speed}` : line);
+        if (shape.type === 'rectangle') shapeGcode = getRectangleGcode(shape.params);
+        else if (shape.type === 'circle') shapeGcode = getCircleGcode(shape.params);
+        shapeGcode = shapeGcode.map(line => (line.startsWith('G1') || line.startsWith('G2') || line.startsWith('G3')) ? `${line} F${layer.speed}` : line);
         gcode = gcode.concat(shapeGcode);
       });
       gcode.push('M5 ; Fin du calque, laser éteint');
-    }
+    });
 
     gcode.push('\n; --- Fin du projet ---', 'G0 X0 Y0');
     return gcode.join('\n');
@@ -160,7 +152,7 @@ window.addEventListener('DOMContentLoaded', () => {
       project.layers[activeLayer] = {
         speed: parseFloat(feedRateInput.value),
         power: parseFloat(laserPowerInput.value),
-        color: PALETTE_COLORS[activeLayer].hex
+        color: PALETTE_DATA.find(p => p.index === activeLayer).hex
       };
     }
     const shape = { id: shapeIdCounter++, type: document.querySelector('input[name="shape"]:checked').value, layerIndex: activeLayer, params: {} };
@@ -189,7 +181,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- Initialisation ---
+  // --- Initialisation et Écouteurs ---
   updateVisibleParams();
   populatePalette();
   addShapeBtn.addEventListener('click', addShape);
@@ -201,10 +193,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const layerIndex = e.target.dataset.layerIndex;
       const property = e.target.dataset.property;
       const value = parseFloat(e.target.value);
-
       if (project.layers[layerIndex] && !isNaN(value)) {
         project.layers[layerIndex][property] = value;
-        console.log(`Updated layer ${layerIndex}:`, project.layers[layerIndex]);
       }
     }
   });
