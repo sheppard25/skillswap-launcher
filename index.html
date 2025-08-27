@@ -43,13 +43,9 @@
         <label for="laserPower">Puissance (S-value):</label>
         <input type="number" id="laserPower" value="1000">
 
-        <button id="generate-btn">Générer & Prévisualiser</button>
-        <button id="save-btn">Sauvegarder G-code</button>
-
+        <button id="add-shape-btn" title="Ajoute la forme actuelle à la liste du projet">Ajouter la forme</button>
         <hr>
-
-        <h3>Résultat G-code:</h3>
-        <textarea id="gcode-output" readonly></textarea>
+        <button id="export-gcode-btn" title="Génère le G-code pour toutes les formes du projet">Exporter le G-code final</button>
       </div>
 
       <!-- Panneau Central (Zone de Travail) -->
@@ -59,8 +55,8 @@
 
       <!-- Panneau de Droite (Calques/Couches) -->
       <div class="right-panel panel">
-        <h2>Coupes / Calques</h2>
-        <p>(Fonctionnalité à venir...)</p>
+        <h2>Liste des Formes</h2>
+        <ol id="shape-list"></ol>
       </div>
     </div>
 
