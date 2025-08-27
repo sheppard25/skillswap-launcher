@@ -18,6 +18,8 @@ window.addEventListener('DOMContentLoaded', () => {
     { index: '28', hex: '#86FA88', name: 'Vert Fluo' }, { index: '29', hex: '#FFDB66', name: 'Jaune Pâle' },
     { index: 'T1', hex: '#F36926', name: 'Outil 1' }, { index: 'T2', hex: '#0C96D9', name: 'Outil 2' }
   ];
+  const RENDER_SCALE = 4;
+  const RENDER_PADDING = 10.5;
 
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
@@ -35,10 +37,11 @@ window.addEventListener('DOMContentLoaded', () => {
   const rectangleParams = document.getElementById('rectangle-params');
   const circleParams = document.getElementById('circle-params');
 
-  // --- Données du Projet ---
+  // --- Données du Projet & État de l'UI ---
   let project = { shapes: [], layers: {} };
   let shapeIdCounter = 0;
   let activeLayer = '00';
+  let selectedShapeId = null;
 
   // --- Gestion de l'interface dynamique ---
   function updateVisibleParams() {
@@ -52,6 +55,32 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   shapeRadios.forEach(radio => radio.addEventListener('change', updateVisibleParams));
+
+  function updateSelectionProperties() {
+    const selectedShape = project.shapes.find(s => s.id === selectedShapeId);
+    if (!selectedShape) return;
+
+    document.querySelector(`input[name="shape"][value="${selectedShape.type}"]`).checked = true;
+    updateVisibleParams();
+
+    if (selectedShape.type === 'rectangle') {
+      widthInput.value = selectedShape.params.width;
+      heightInput.value = selectedShape.params.height;
+    } else if (selectedShape.type === 'circle') {
+      diameterInput.value = selectedShape.params.diameter;
+    }
+
+    const layer = project.layers[selectedShape.layerIndex];
+    if (layer) {
+      feedRateInput.value = layer.speed;
+      laserPowerInput.value = layer.power;
+    }
+
+    activeLayer = selectedShape.layerIndex;
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.toggle('active', s.dataset.layerIndex === activeLayer);
+    });
+  }
 
   // --- Initialisation & Rendu ---
   function populatePalette() {
@@ -75,12 +104,12 @@ window.addEventListener('DOMContentLoaded', () => {
     layerList.innerHTML = '';
     Object.keys(project.layers).sort().forEach(layerIndex => {
       const layer = project.layers[layerIndex];
-      const colorName = PALETTE_DATA.find(p => p.index === layerIndex).name;
+      const colorData = PALETTE_DATA.find(p => p.index === layerIndex) || { name: 'Inconnu' };
       const layerDiv = document.createElement('div');
       layerDiv.className = 'layer-item';
       layerDiv.innerHTML = `
         <div class="layer-color" style="background-color: ${layer.color}"></div>
-        <span>${colorName}</span>
+        <span>${colorData.name}</span>
         <label>V: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="speed" value="${layer.speed}"></label>
         <label>P: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="power" value="${layer.power}"></label>
       `;
@@ -89,25 +118,63 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderCanvas() {
-    const padding = 10.5;
-    const scale = 4;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     project.shapes.forEach(shape => {
       const layer = project.layers[shape.layerIndex];
       if (!layer) return;
       ctx.strokeStyle = layer.color;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = (shape.id === selectedShapeId) ? 3 : 1;
       if (shape.type === 'rectangle') {
-        ctx.strokeRect(padding, padding, shape.params.width * scale, shape.params.height * scale);
+        ctx.strokeRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
       } else if (shape.type === 'circle') {
-        const radius = (shape.params.diameter / 2) * scale;
-        const centerX = padding + radius;
-        const centerY = padding + radius;
+        const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+        const centerX = RENDER_PADDING + radius;
+        const centerY = RENDER_PADDING + radius;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
         ctx.stroke();
       }
     });
+  }
+
+  // --- Logique de Sélection ---
+  function getMousePos(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+  }
+
+  function isPointInShape(point, shape) {
+    if (shape.type === 'rectangle') {
+      const shapeX = RENDER_PADDING;
+      const shapeY = RENDER_PADDING;
+      const shapeWidth = shape.params.width * RENDER_SCALE;
+      const shapeHeight = shape.params.height * RENDER_SCALE;
+      return point.x >= shapeX && point.x <= shapeX + shapeWidth && point.y >= shapeY && point.y <= shapeY + shapeHeight;
+    } else if (shape.type === 'circle') {
+      const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+      const centerX = RENDER_PADDING + radius;
+      const centerY = RENDER_PADDING + radius;
+      const dx = point.x - centerX;
+      const dy = point.y - centerY;
+      return (dx * dx + dy * dy) <= (radius * radius);
+    }
+    return false;
+  }
+
+  function handleCanvasClick(event) {
+    const mousePos = getMousePos(canvas, event);
+    let foundShape = false;
+    for (let i = project.shapes.length - 1; i >= 0; i--) {
+      const shape = project.shapes[i];
+      if (isPointInShape(mousePos, shape)) {
+        selectedShapeId = shape.id;
+        foundShape = true;
+        break;
+      }
+    }
+    if (!foundShape) selectedShapeId = null;
+    renderCanvas();
+    updateSelectionProperties();
   }
 
   // --- Génération de G-code ---
@@ -121,12 +188,8 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function generateProjectGCode() {
-    const outputShapes = project.shapes.filter(shape => {
-      return shape.layerIndex !== 'T1' && shape.layerIndex !== 'T2';
-    });
-
+    const outputShapes = project.shapes.filter(shape => shape.layerIndex !== 'T1' && shape.layerIndex !== 'T2');
     if (outputShapes.length === 0) return '';
-
     let gcode = ['G90', 'G21', '; --- Début du projet ---'];
     const shapesByLayer = {};
     outputShapes.forEach(shape => {
@@ -168,8 +231,10 @@ window.addEventListener('DOMContentLoaded', () => {
       shape.params = { diameter: parseFloat(diameterInput.value) };
     }
     project.shapes.push(shape);
+    selectedShapeId = shape.id;
     renderLayerList();
     renderCanvas();
+    updateSelectionProperties();
     exportGcodeBtn.disabled = project.shapes.length === 0;
   }
 
@@ -193,7 +258,6 @@ window.addEventListener('DOMContentLoaded', () => {
   addShapeBtn.addEventListener('click', addShape);
   exportGcodeBtn.addEventListener('click', exportGcode);
   exportGcodeBtn.disabled = true;
-
   layerList.addEventListener('input', (e) => {
     if (e.target.classList.contains('layer-input')) {
       const layerIndex = e.target.dataset.layerIndex;
@@ -204,4 +268,5 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+  canvas.addEventListener('click', handleCanvasClick);
 });
