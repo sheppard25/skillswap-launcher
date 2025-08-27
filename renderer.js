@@ -1,4 +1,10 @@
 window.addEventListener('DOMContentLoaded', () => {
+  // --- Constantes ---
+  const PALETTE_COLORS = {
+    '00': { hex: '#0000FF', name: 'Bleu' }, '01': { hex: '#FF0000', name: 'Rouge' },
+    '02': { hex: '#00FF00', name: 'Vert' }, '03': { hex: '#000000', name: 'Noir' },
+  };
+
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
   const exportGcodeBtn = document.getElementById('export-gcode-btn');
@@ -7,7 +13,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const diameterInput = document.getElementById('diameter');
   const feedRateInput = document.getElementById('feedRate');
   const laserPowerInput = document.getElementById('laserPower');
-  const shapeList = document.getElementById('shape-list');
+  const layerList = document.getElementById('layer-list');
+  const colorPalette = document.getElementById('color-palette');
   const canvas = document.getElementById('preview-canvas');
   const ctx = canvas.getContext('2d');
   const shapeRadios = document.querySelectorAll('input[name="shape"]');
@@ -15,8 +22,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const circleParams = document.getElementById('circle-params');
 
   // --- Données du Projet ---
-  let projectShapes = [];
+  let project = { shapes: [], layers: {} };
   let shapeIdCounter = 0;
+  let activeLayer = '00';
 
   // --- Gestion de l'interface dynamique ---
   function updateVisibleParams() {
@@ -30,30 +38,47 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   shapeRadios.forEach(radio => radio.addEventListener('change', updateVisibleParams));
-  updateVisibleParams();
 
-  // --- Fonctions de rendu ---
-  function renderShapeList() {
-    shapeList.innerHTML = '';
-    projectShapes.forEach(shape => {
-      const listItem = document.createElement('li');
-      let description = `ID: ${shape.id} | `;
-      if (shape.type === 'rectangle') {
-        description += `Rectangle: ${shape.params.width}x${shape.params.height}mm`;
-      } else if (shape.type === 'circle') {
-        description += `Cercle: Ø${shape.params.diameter}mm`;
-      }
-      listItem.textContent = description;
-      shapeList.appendChild(listItem);
-    });
+  // --- Initialisation & Rendu ---
+  function populatePalette() {
+    for (const layerIndex in PALETTE_COLORS) {
+      const swatch = document.createElement('div');
+      swatch.classList.add('color-swatch');
+      swatch.style.backgroundColor = PALETTE_COLORS[layerIndex].hex;
+      swatch.dataset.layerIndex = layerIndex;
+      if (layerIndex === activeLayer) swatch.classList.add('active');
+      swatch.addEventListener('click', () => {
+        activeLayer = layerIndex;
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+      });
+      colorPalette.appendChild(swatch);
+    }
+  }
+
+  function renderLayerList() {
+    layerList.innerHTML = '';
+    for (const layerIndex in project.layers) {
+      const layer = project.layers[layerIndex];
+      const layerDiv = document.createElement('div');
+      layerDiv.className = 'layer-item';
+      layerDiv.innerHTML = `
+        <div class="layer-color" style="background-color: ${layer.color}"></div>
+        <span>Calque ${layerIndex}</span>
+        <span>V:${layer.speed}</span>
+        <span>P:${layer.power}</span>
+      `;
+      layerList.appendChild(layerDiv);
+    }
   }
 
   function renderCanvas() {
     const padding = 10.5;
     const scale = 4;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    projectShapes.forEach(shape => {
-      ctx.strokeStyle = '#e44c4c';
+    project.shapes.forEach(shape => {
+      const layer = project.layers[shape.layerIndex];
+      ctx.strokeStyle = layer.color;
       ctx.lineWidth = 1;
       if (shape.type === 'rectangle') {
         ctx.strokeRect(padding, padding, shape.params.width * scale, shape.params.height * scale);
@@ -70,87 +95,88 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- Génération de G-code ---
   function getRectangleGcode(params) {
-    if (params.width <= 0 || params.height <= 0) return [];
-    return [
-      `M4 S${params.laserPower}`,
-      `G1 X${params.width} Y0 F${params.feedRate}`,
-      `G1 X${params.width} Y${params.height}`,
-      `G1 X0 Y${params.height}`,
-      'G1 X0 Y0',
-      'M5',
-    ];
+    return [`G1 X${params.width} Y0`, `G1 X${params.width} Y${params.height}`, `G1 X0 Y${params.height}`, 'G1 X0 Y0'];
   }
 
   function getCircleGcode(params) {
-    if (params.diameter <= 0) return [];
     const radius = params.diameter / 2;
-    return [
-      `G0 X${radius} Y0`, // Aller au point de départ
-      `M4 S${params.laserPower}`,
-      `G2 X${radius} Y0 I${-radius} J0 F${params.feedRate}`, // Arc complet
-      'M5',
-    ];
+    return [`G0 X${radius} Y0`, `G2 X${radius} Y0 I${-radius} J0`];
   }
 
   function generateProjectGCode() {
-    if (projectShapes.length === 0) return '';
-    let gcode = [
-      'G90 ; Positionnement absolu',
-      'G21 ; Unités en millimètres',
-      'G0 X0 Y0 F3000; Mouvement initial',
-      '; --- Début du projet ---',
-    ];
+    if (project.shapes.length === 0) return '';
+    let gcode = ['G90', 'G21', '; --- Début du projet ---'];
 
-    projectShapes.forEach(shape => {
-      gcode.push(`\n; Forme ID: ${shape.id} - ${shape.type}`);
-      let shapeGcode = [];
-      if (shape.type === 'rectangle') {
-        shapeGcode = getRectangleGcode(shape.params);
-      } else if (shape.type === 'circle') {
-        shapeGcode = getCircleGcode(shape.params);
+    // Group shapes by layer
+    const shapesByLayer = {};
+    project.shapes.forEach(shape => {
+      if (!shapesByLayer[shape.layerIndex]) {
+        shapesByLayer[shape.layerIndex] = [];
       }
-      gcode = gcode.concat(shapeGcode);
+      shapesByLayer[shape.layerIndex].push(shape);
     });
 
-    gcode.push('\n; --- Fin du projet ---');
-    gcode.push('G0 X0 Y0 ; Retour final à l\'origine');
+    for (const layerIndex in shapesByLayer) {
+      const layer = project.layers[layerIndex];
+      gcode.push(`\n; Calque ${layerIndex} - Vitesse: ${layer.speed}, Puissance: ${layer.power}`);
+      gcode.push(`M4 S${layer.power}`);
+
+      shapesByLayer[layerIndex].forEach(shape => {
+        let shapeGcode = [];
+        if (shape.type === 'rectangle') {
+          shapeGcode = getRectangleGcode(shape.params);
+        } else if (shape.type === 'circle') {
+          shapeGcode = getCircleGcode(shape.params);
+        }
+        // Add feed rate to all G1/G2/G3 moves
+        shapeGcode = shapeGcode.map(line => line.startsWith('G1') || line.startsWith('G2') || line.startsWith('G3') ? `${line} F${layer.speed}` : line);
+        gcode = gcode.concat(shapeGcode);
+      });
+      gcode.push('M5 ; Fin du calque, laser éteint');
+    }
+
+    gcode.push('\n; --- Fin du projet ---', 'G0 X0 Y0');
     return gcode.join('\n');
   }
 
   // --- Logique principale ---
   function addShape() {
-    const selectedShape = document.querySelector('input[name="shape"]:checked').value;
-    const commonParams = {
-        feedRate: parseFloat(feedRateInput.value),
-        laserPower: parseFloat(laserPowerInput.value)
-    };
-    const shape = { id: shapeIdCounter++, type: selectedShape, params: {} };
-    if (selectedShape === 'rectangle') {
-      shape.params = { width: parseFloat(widthInput.value), height: parseFloat(heightInput.value), ...commonParams };
-    } else {
-      shape.params = { diameter: parseFloat(diameterInput.value), ...commonParams };
+    if (!project.layers[activeLayer]) {
+      project.layers[activeLayer] = {
+        speed: parseFloat(feedRateInput.value),
+        power: parseFloat(laserPowerInput.value),
+        color: PALETTE_COLORS[activeLayer].hex
+      };
     }
-    projectShapes.push(shape);
-    renderShapeList();
+    const shape = { id: shapeIdCounter++, type: document.querySelector('input[name="shape"]:checked').value, layerIndex: activeLayer, params: {} };
+    if (shape.type === 'rectangle') {
+      shape.params = { width: parseFloat(widthInput.value), height: parseFloat(heightInput.value) };
+    } else {
+      shape.params = { diameter: parseFloat(diameterInput.value) };
+    }
+    project.shapes.push(shape);
+    renderLayerList();
     renderCanvas();
-    exportGcodeBtn.disabled = projectShapes.length === 0;
+    exportGcodeBtn.disabled = project.shapes.length === 0;
   }
 
   async function exportGcode() {
     const finalGcode = generateProjectGCode();
     if (!finalGcode) {
-      alert("Le projet est vide. Ajoutez des formes avant d'exporter.");
+      alert("Projet vide.");
       return;
     }
     const result = await window.electronAPI.saveGcode(finalGcode);
     if (result.success) {
-      alert(`Fichier sauvegardé avec succès à : ${result.path}`);
+      alert(`Fichier sauvegardé: ${result.path}`);
     } else if (result.message && !result.message.includes('annulée')) {
-      alert(`Erreur lors de la sauvegarde : ${result.message}`);
+      alert(`Erreur: ${result.message}`);
     }
   }
 
-  // --- Écouteurs d'événements ---
+  // --- Initialisation ---
+  updateVisibleParams();
+  populatePalette();
   addShapeBtn.addEventListener('click', addShape);
   exportGcodeBtn.addEventListener('click', exportGcode);
   exportGcodeBtn.disabled = true;

@@ -122,3 +122,53 @@ input[type="radio"] {
   margin-right: 8px;
   width: auto; /* Override general input style */
 }
+
+/* Style pour la palette de couleurs */
+#color-palette {
+  flex-shrink: 0; /* Empêche la palette de rétrécir */
+  flex-direction: row; /* Aligne les couleurs horizontalement */
+  flex-wrap: wrap; /* Permet aux couleurs de passer à la ligne */
+  padding: 5px;
+  margin-top: 0;
+  max-height: 100px; /* Limite la hauteur */
+  overflow-y: auto;
+}
+
+.color-swatch {
+  width: 25px;
+  height: 25px;
+  border: 3px solid #3c4049; /* Bordure de la même couleur que le panneau */
+  border-radius: 3px;
+  margin: 2px;
+  cursor: pointer;
+}
+
+.color-swatch.active {
+  border-color: white; /* Met en évidence la couleur active */
+}
+
+/* Style pour les éléments de la liste des calques */
+.layer-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #4f535d;
+  font-size: 0.9em;
+}
+
+.layer-item:last-child {
+  border-bottom: none;
+}
+
+.layer-color {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.layer-item span {
+  margin-right: 10px;
+  color: #abb2bf;
+}
