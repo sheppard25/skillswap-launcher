@@ -1,3 +1,6 @@
+# Change directory to the script's location to ensure npm finds package.json
+Set-Location -Path $PSScriptRoot
+
 Write-Host "============================================================"
 Write-Host " 1. Verification et installation des dependances (npm install)"
 Write-Host "============================================================"
