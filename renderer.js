@@ -1,8 +1,21 @@
 window.addEventListener('DOMContentLoaded', () => {
   // --- Constantes ---
   const PALETTE_COLORS = {
-    '00': { hex: '#0000FF', name: 'Bleu' }, '01': { hex: '#FF0000', name: 'Rouge' },
-    '02': { hex: '#00FF00', name: 'Vert' }, '03': { hex: '#000000', name: 'Noir' },
+    '00': { hex: '#000000', name: 'Noir' }, '01': { hex: '#0000FF', name: 'Bleu' },
+    '02': { hex: '#FF0000', name: 'Rouge' }, '03': { hex: '#00E000', name: 'Vert' },
+    '04': { hex: '#D0D000', name: 'Jaune' }, '05': { hex: '#FF8000', name: 'Orange' },
+    '06': { hex: '#00E0E0', name: 'Cyan' }, '07': { hex: '#FF00FF', name: 'Magenta' },
+    '08': { hex: '#B4B4B4', name: 'Gris Clair' }, '09': { hex: '#0000A0', name: 'Bleu Foncé' },
+    '10': { hex: '#A00000', name: 'Rouge Foncé' }, '11': { hex: '#00A000', name: 'Vert Foncé' },
+    '12': { hex: '#A0A000', name: 'Jaune Foncé' }, '13': { hex: '#C08000', name: 'Marron' },
+    '14': { hex: '#00A0FF', name: 'Bleu Ciel' }, '15': { hex: '#A000A0', name: 'Violet' },
+    '16': { hex: '#808080', name: 'Gris Moyen' }, '17': { hex: '#7D87B9', name: 'Bleu Lavande' },
+    '18': { hex: '#BB7784', name: 'Vieux Rose' }, '19': { hex: '#4A6FE3', name: 'Bleu Royal' },
+    '20': { hex: '#D33F6A', name: 'Rose Vif' }, '21': { hex: '#8CD78C', name: 'Vert Pastel' },
+    '22': { hex: '#F0B98D', name: 'Pêche' }, '23': { hex: '#F6C4E1', name: 'Rose Pâle' },
+    '24': { hex: '#FA9ED4', name: 'Rose Bonbon' }, '25': { hex: '#500A78', name: 'Indigo' },
+    '26': { hex: '#B45A00', name: 'Ocre' }, '27': { hex: '#004754', name: 'Bleu Canard' },
+    '28': { hex: '#86FA88', name: 'Vert Fluo' }, '29': { hex: '#FFDB66', name: 'Jaune Pâle' }
   };
 
   // --- Récupération des éléments de l'interface ---
