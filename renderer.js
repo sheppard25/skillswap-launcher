@@ -59,6 +59,7 @@ window.addEventListener('DOMContentLoaded', () => {
       swatch.classList.add('color-swatch');
       swatch.style.backgroundColor = PALETTE_COLORS[layerIndex].hex;
       swatch.dataset.layerIndex = layerIndex;
+      swatch.textContent = layerIndex; // Ajoute le numéro sur la case
       if (layerIndex === activeLayer) swatch.classList.add('active');
       swatch.addEventListener('click', () => {
         activeLayer = layerIndex;
