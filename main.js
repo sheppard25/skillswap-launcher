@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 function createWindow() {
   // Create the browser window.
@@ -22,6 +23,32 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Listen for the 'save-gcode' channel from the renderer process
+  ipcMain.handle('save-gcode', async (event, gcodeContent) => {
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      title: 'Sauvegarder le G-code',
+      defaultPath: 'forme.gcode',
+      filters: [
+        { name: 'G-code Files', extensions: ['gcode', 'nc', 'txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (canceled || !filePath) {
+      console.log('Sauvegarde annulée par l\'utilisateur.');
+      return { success: false, message: 'Sauvegarde annulée.' };
+    }
+
+    try {
+      fs.writeFileSync(filePath, gcodeContent, 'utf-8');
+      console.log(`Fichier sauvegardé à : ${filePath}`);
+      return { success: true, path: filePath };
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du fichier:', error);
+      return { success: false, message: `Erreur de sauvegarde: ${error.message}` };
+    }
+  });
+
   createWindow();
 
   app.on('activate', function () {
