@@ -15,7 +15,8 @@ window.addEventListener('DOMContentLoaded', () => {
     { index: '22', hex: '#F0B98D', name: 'Pêche' }, { index: '23', hex: '#F6C4E1', name: 'Rose Pâle' },
     { index: '24', hex: '#FA9ED4', name: 'Rose Bonbon' }, { index: '25', hex: '#500A78', name: 'Indigo' },
     { index: '26', hex: '#B45A00', name: 'Ocre' }, { index: '27', hex: '#004754', name: 'Bleu Canard' },
-    { index: '28', hex: '#86FA88', name: 'Vert Fluo' }, { index: '29', hex: '#FFDB66', name: 'Jaune Pâle' }
+    { index: '28', hex: '#86FA88', name: 'Vert Fluo' }, { index: '29', hex: '#FFDB66', name: 'Jaune Pâle' },
+    { index: 'T1', hex: '#F36926', name: 'Outil 1' }, { index: 'T2', hex: '#0C96D9', name: 'Outil 2' }
   ];
 
   // --- Récupération des éléments de l'interface ---
@@ -120,10 +121,15 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function generateProjectGCode() {
-    if (project.shapes.length === 0) return '';
+    const outputShapes = project.shapes.filter(shape => {
+      return shape.layerIndex !== 'T1' && shape.layerIndex !== 'T2';
+    });
+
+    if (outputShapes.length === 0) return '';
+
     let gcode = ['G90', 'G21', '; --- Début du projet ---'];
     const shapesByLayer = {};
-    project.shapes.forEach(shape => {
+    outputShapes.forEach(shape => {
       if (!shapesByLayer[shape.layerIndex]) shapesByLayer[shape.layerIndex] = [];
       shapesByLayer[shape.layerIndex].push(shape);
     });
