@@ -172,3 +172,13 @@ input[type="radio"] {
   margin-right: 10px;
   color: #abb2bf;
 }
+
+/* Style for inputs within the layer list */
+.layer-input {
+  width: 60px; /* A fixed small width */
+  margin-left: 5px;
+  text-align: right;
+  padding: 4px;
+  /* Override some general input styles */
+  margin-bottom: 0;
+}

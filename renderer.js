@@ -75,11 +75,12 @@ window.addEventListener('DOMContentLoaded', () => {
       const layer = project.layers[layerIndex];
       const layerDiv = document.createElement('div');
       layerDiv.className = 'layer-item';
+      // Remplacer les spans par des inputs pour l'édition
       layerDiv.innerHTML = `
         <div class="layer-color" style="background-color: ${layer.color}"></div>
-        <span>Calque ${layerIndex}</span>
-        <span>V:${layer.speed}</span>
-        <span>P:${layer.power}</span>
+        <span>${PALETTE_COLORS[layerIndex].name}</span>
+        <label>V: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="speed" value="${layer.speed}"></label>
+        <label>P: <input type="number" class="layer-input" data-layer-index="${layerIndex}" data-property="power" value="${layer.power}"></label>
       `;
       layerList.appendChild(layerDiv);
     }
@@ -193,4 +194,17 @@ window.addEventListener('DOMContentLoaded', () => {
   addShapeBtn.addEventListener('click', addShape);
   exportGcodeBtn.addEventListener('click', exportGcode);
   exportGcodeBtn.disabled = true;
+
+  layerList.addEventListener('input', (e) => {
+    if (e.target.classList.contains('layer-input')) {
+      const layerIndex = e.target.dataset.layerIndex;
+      const property = e.target.dataset.property;
+      const value = parseFloat(e.target.value);
+
+      if (project.layers[layerIndex] && !isNaN(value)) {
+        project.layers[layerIndex][property] = value;
+        console.log(`Updated layer ${layerIndex}:`, project.layers[layerIndex]);
+      }
+    }
+  });
 });
