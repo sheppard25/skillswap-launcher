@@ -10,9 +10,28 @@ window.addEventListener('DOMContentLoaded', () => {
   const feedRateInput = document.getElementById('feedRate');
   const laserPowerInput = document.getElementById('laserPower');
   const gcodeOutput = document.getElementById('gcode-output');
+  const canvas = document.getElementById('preview-canvas');
+  const ctx = canvas.getContext('2d');
 
   // Désactiver le bouton de sauvegarde initialement
   saveBtn.disabled = true;
+
+  function drawPreview() {
+    const width = parseFloat(widthInput.value) || 0;
+    const height = parseFloat(heightInput.value) || 0;
+    const padding = 10.5; // .5 to get sharp lines
+    const scale = 4; // Simple scaling factor to make the shape visible
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (width > 0 && height > 0) {
+        // Draw shape
+        ctx.strokeStyle = '#e44c4c'; // Red color for the path
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding, padding, width * scale, height * scale);
+    }
+  }
 
   function generateSquareGCode(width, height, feedRate, laserPower) {
     if (width <= 0 || height <= 0 || feedRate <= 0 || laserPower < 0) {
@@ -50,8 +69,17 @@ window.addEventListener('DOMContentLoaded', () => {
     const generatedGcode = generateSquareGCode(width, height, feedRate, laserPower);
     gcodeOutput.value = generatedGcode;
 
+    const isError = generatedGcode.startsWith('Erreur');
     // Activer le bouton de sauvegarde uniquement si le G-code est valide
-    saveBtn.disabled = generatedGcode.startsWith('Erreur');
+    saveBtn.disabled = isError;
+
+    // Mettre à jour la prévisualisation
+    if (!isError) {
+      drawPreview();
+    } else {
+      // Effacer la toile en cas d'erreur dans les paramètres
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
   });
 
   // Écouteur d'événement pour le bouton de sauvegarde
