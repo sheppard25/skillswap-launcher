@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>SpaceGravure</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';">
+  </head>
+  <body>
+    <h1>SpaceGravure</h1>
+    <p>Bienvenue dans votre nouvelle application !</p>
+
+    <p>
+      Nous utilisons Node.js <span id="node-version"></span>,
+      Chromium <span id="chrome-version"></span>,
+      et Electron <span id="electron-version"></span>.
+    </p>
+
+    <hr>
+
+    <h2>Générateur de G-code</h2>
+    <div id="controls">
+      <label for="width">Largeur (mm):</label>
+      <input type="number" id="width" value="50">
+      <br>
+      <label for="height">Hauteur (mm):</label>
+      <input type="number" id="height" value="50">
+      <br><br>
+      <button id="generate-btn">Générer G-code</button>
+    </div>
+
+    <h3>Résultat G-code:</h3>
+    <textarea id="gcode-output" rows="15" cols="60" readonly style="font-family: monospace;"></textarea>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
