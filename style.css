@@ -101,3 +101,24 @@ hr {
   max-width: 100%;
   max-height: 100%;
 }
+
+/* Style pour le sélecteur de forme */
+#shape-selector {
+  display: flex;
+  justify-content: space-around;
+  background-color: #282c34;
+  border-radius: 5px;
+  padding: 5px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px 10px;
+}
+
+input[type="radio"] {
+  margin-right: 8px;
+  width: auto; /* Override general input style */
+}

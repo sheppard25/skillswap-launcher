@@ -12,12 +12,31 @@
       <div class="left-panel panel">
         <h2>Contrôles</h2>
 
-        <label for="width">Largeur (mm):</label>
-        <input type="number" id="width" value="50">
+        <div id="shape-selector">
+          <label class="radio-label"><input type="radio" name="shape" value="rectangle" checked> Rectangle</label>
+          <label class="radio-label"><input type="radio" name="shape" value="circle"> Cercle</label>
+        </div>
 
-        <label for="height">Hauteur (mm):</label>
-        <input type="number" id="height" value="50">
+        <hr>
 
+        <!-- Paramètres pour le rectangle -->
+        <div id="rectangle-params">
+          <label for="width">Largeur (mm):</label>
+          <input type="number" id="width" value="50">
+
+          <label for="height">Hauteur (mm):</label>
+          <input type="number" id="height" value="50">
+        </div>
+
+        <!-- Paramètres pour le cercle (cachés par défaut) -->
+        <div id="circle-params" style="display: none;">
+          <label for="diameter">Diamètre (mm):</label>
+          <input type="number" id="diameter" value="50">
+        </div>
+
+        <hr>
+
+        <h3>Paramètres Communs</h3>
         <label for="feedRate">Vitesse (mm/min):</label>
         <input type="number" id="feedRate" value="1000">
 

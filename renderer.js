@@ -1,103 +1,126 @@
-// Ce fichier est exécuté par la page index.html (le "renderer process").
-// Il a accès aux API Node.js et peut manipuler le DOM.
-
 window.addEventListener('DOMContentLoaded', () => {
-  // Récupération des éléments de l'interface
+  // --- Récupération des éléments de l'interface ---
   const generateBtn = document.getElementById('generate-btn');
   const saveBtn = document.getElementById('save-btn');
   const widthInput = document.getElementById('width');
   const heightInput = document.getElementById('height');
+  const diameterInput = document.getElementById('diameter');
   const feedRateInput = document.getElementById('feedRate');
   const laserPowerInput = document.getElementById('laserPower');
   const gcodeOutput = document.getElementById('gcode-output');
   const canvas = document.getElementById('preview-canvas');
   const ctx = canvas.getContext('2d');
+  const shapeRadios = document.querySelectorAll('input[name="shape"]');
+  const rectangleParams = document.getElementById('rectangle-params');
+  const circleParams = document.getElementById('circle-params');
 
-  // Désactiver le bouton de sauvegarde initialement
-  saveBtn.disabled = true;
-
-  function drawPreview() {
-    const width = parseFloat(widthInput.value) || 0;
-    const height = parseFloat(heightInput.value) || 0;
-    const padding = 10.5; // .5 to get sharp lines
-    const scale = 4; // Simple scaling factor to make the shape visible
-
-    // Clear canvas
+  // --- Gestion de l'interface dynamique ---
+  function updateVisibleParams() {
+    const selectedShape = document.querySelector('input[name="shape"]:checked').value;
+    if (selectedShape === 'circle') {
+      rectangleParams.style.display = 'none';
+      circleParams.style.display = 'block';
+    } else {
+      rectangleParams.style.display = 'block';
+      circleParams.style.display = 'none';
+    }
+    // Effacer la toile et le gcode lors du changement de forme
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    gcodeOutput.value = '';
+    saveBtn.disabled = true;
+  }
 
-    if (width > 0 && height > 0) {
-        // Draw shape
-        ctx.strokeStyle = '#e44c4c'; // Red color for the path
-        ctx.lineWidth = 1;
-        ctx.strokeRect(padding, padding, width * scale, height * scale);
+  shapeRadios.forEach(radio => {
+    radio.addEventListener('change', updateVisibleParams);
+  });
+  updateVisibleParams(); // Appel initial pour définir le bon état
+
+  // --- Prévisualisation sur la toile ---
+  function drawPreview(shape, params) {
+    const padding = 10.5; // .5 pour des lignes nettes
+    const scale = 4; // Facteur d'échelle simple pour la visibilité
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#e44c4c'; // Couleur rouge pour le tracé
+    ctx.lineWidth = 1;
+
+    if (shape === 'rectangle') {
+      ctx.strokeRect(padding, padding, params.width * scale, params.height * scale);
+    } else if (shape === 'circle') {
+      const radius = (params.diameter / 2) * scale;
+      const centerX = padding + radius;
+      const centerY = padding + radius;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.stroke();
     }
   }
 
+  // --- Génération de G-code ---
   function generateSquareGCode(width, height, feedRate, laserPower) {
-    if (width <= 0 || height <= 0 || feedRate <= 0 || laserPower < 0) {
-      return "Erreur : Les valeurs doivent être positives (puissance >= 0).";
-    }
-
-    // G-code commands for a simple square
-    const gcode = [
-      'G90 ; Positionnement absolu',
-      'G21 ; Unités en millimètres',
-      `G0 X0 Y0 F${feedRate * 3} ; Mouvement rapide vers l'origine`,
-      '',
-      '; --- Début de la gravure ---',
-      `M4 S${laserPower} ; Allumer le laser`,
-      `G1 X${width} Y0 F${feedRate} ; Ligne vers [${width}, 0]`,
-      `G1 X${width} Y${height} ; Ligne vers [${width}, ${height}]`,
-      `G1 X0 Y${height} ; Ligne vers [0, ${height}]`,
-      'G1 X0 Y0 ; Ligne de retour à l'origine',
-      'M5 ; Éteindre le laser',
-      '; --- Fin de la gravure ---',
-      '',
-      `G0 X0 Y0 ; Retour rapide à l'origine`,
-    ];
-
-    return gcode.join('\n');
+    if (width <= 0 || height <= 0 || feedRate <= 0 || laserPower < 0) return "Erreur : Les valeurs doivent être positives (puissance >= 0).";
+    return [
+      'G90 ; Positionnement absolu', `G21 ; Unités en millimètres`, `G0 X0 Y0 F${feedRate * 3}`, ``,
+      '; --- Début de la gravure ---', `M4 S${laserPower}`, `G1 X${width} Y0 F${feedRate}`,
+      `G1 X${width} Y${height}`, `G1 X0 Y${height}`, 'G1 X0 Y0', 'M5 ; Éteindre le laser',
+      '; --- Fin de la gravure ---', ``, `G0 X0 Y0`,
+    ].join('\n');
   }
 
-  // Écouteur d'événement pour le bouton de génération
+  function generateCircleGCode(diameter, feedRate, laserPower) {
+    if (diameter <= 0 || feedRate <= 0 || laserPower < 0) return "Erreur : Les valeurs doivent être positives (puissance >= 0).";
+    const radius = diameter / 2;
+    return [
+        'G90 ; Positionnement absolu', `G21 ; Unités en millimètres`, `G0 X${radius} Y0 F${feedRate * 3} ; Aller au point de départ du cercle`, ``,
+        '; --- Début de la gravure ---', `M4 S${laserPower}`,
+        // Arc horaire (G2) du point de départ, retour au même point, avec le centre à l'origine (I=-radius, J=0)
+        `G2 X${radius} Y0 I${-radius} J0 F${feedRate}`,
+        'M5 ; Éteindre le laser', '; --- Fin de la gravure ---', ``, `G0 X0 Y0 ; Retour à l'origine`,
+    ].join('\n');
+  }
+
+  // --- Écouteurs d'événements principaux ---
   generateBtn.addEventListener('click', () => {
-    const width = parseFloat(widthInput.value);
-    const height = parseFloat(heightInput.value);
+    const selectedShape = document.querySelector('input[name="shape"]:checked').value;
     const feedRate = parseFloat(feedRateInput.value);
     const laserPower = parseFloat(laserPowerInput.value);
+    let generatedGcode = '';
+    let params = {};
 
-    const generatedGcode = generateSquareGCode(width, height, feedRate, laserPower);
+    if (selectedShape === 'rectangle') {
+      params = {
+        width: parseFloat(widthInput.value),
+        height: parseFloat(heightInput.value),
+      };
+      generatedGcode = generateSquareGCode(params.width, params.height, feedRate, laserPower);
+    } else { // Cercle
+      params = {
+        diameter: parseFloat(diameterInput.value),
+      };
+      generatedGcode = generateCircleGCode(params.diameter, feedRate, laserPower);
+    }
+
     gcodeOutput.value = generatedGcode;
-
     const isError = generatedGcode.startsWith('Erreur');
-    // Activer le bouton de sauvegarde uniquement si le G-code est valide
     saveBtn.disabled = isError;
 
-    // Mettre à jour la prévisualisation
     if (!isError) {
-      drawPreview();
+      drawPreview(selectedShape, params);
     } else {
-      // Effacer la toile en cas d'erreur dans les paramètres
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   });
 
-  // Écouteur d'événement pour le bouton de sauvegarde
   saveBtn.addEventListener('click', async () => {
     const gcodeContent = gcodeOutput.value;
     if (!gcodeContent || gcodeContent.startsWith('Erreur')) {
       alert("Il n'y a pas de G-code valide à sauvegarder.");
       return;
     }
-
     const result = await window.electronAPI.saveGcode(gcodeContent);
     if (result.success) {
       alert(`Fichier sauvegardé avec succès à : ${result.path}`);
-    } else {
-      // Ne pas afficher d'alerte si l'utilisateur a simplement annulé la sauvegarde
-      if(result.message && !result.message.includes('annulée')) {
-        alert(`Erreur lors de la sauvegarde : ${result.message}`);
-      }
+    } else if (result.message && !result.message.includes('annulée')) {
+      alert(`Erreur lors de la sauvegarde : ${result.message}`);
     }
   });
 });
