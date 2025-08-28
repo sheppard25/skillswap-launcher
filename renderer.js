@@ -120,6 +120,7 @@ window.addEventListener('DOMContentLoaded', () => {
               <select class="layer-input" data-layer-index="${layerIndex}" data-property="mode">
                 <option value="line" ${layer.mode === 'line' ? 'selected' : ''}>Ligne</option>
                 <option value="fill" ${layer.mode === 'fill' ? 'selected' : ''}>Remplissage</option>
+                <option value="fill+line" ${layer.mode === 'fill+line' ? 'selected' : ''}>Remplissage+Ligne</option>
               </select>
             </label>
             <label style="display: ${intervalInputDisplay};" class="interval-label">Int: <input type="number" step="0.1" class="layer-input" data-layer-index="${layerIndex}" data-property="lineInterval" value="${layer.lineInterval}"></label>
@@ -138,10 +139,21 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!layer) return;
       ctx.strokeStyle = layer.color;
       ctx.lineWidth = (shape.id === selectedShapeId) ? 3 : 1;
-      // Simple fill preview
-      if (layer.mode === 'fill') {
+      // Fill preview
+      if (layer.mode === 'fill' || layer.mode === 'fill+line') {
           ctx.fillStyle = layer.color + '80'; // Add alpha for fill
-          ctx.fillRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
+          if (shape.type === 'rectangle') {
+            ctx.fillRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
+          }
+          // Note: Circle fill preview not yet implemented, but we can draw the circle filled
+          else if (shape.type === 'circle') {
+            const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+            const centerX = RENDER_PADDING + radius;
+            const centerY = RENDER_PADDING + radius;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fill();
+          }
       }
       if (shape.type === 'rectangle') {
         ctx.strokeRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
@@ -202,9 +214,14 @@ window.addEventListener('DOMContentLoaded', () => {
       gcode.push(`M4 S${layer.power}`);
       shapesByLayer[layerIndex].forEach(shape => {
         let shapeGcode = [];
-        if (layer.mode === 'line') shapeGcode = getLineGcode(shape);
-        else if (layer.mode === 'fill') shapeGcode = getFillGcode(shape);
-        shapeGcode = shapeGcode.map(line => (line.startsWith('G1') || line.startsWith('G2')) ? `${line} F${layer.speed}` : line);
+        if (layer.mode === 'line') {
+          shapeGcode = getLineGcode(shape);
+        } else if (layer.mode === 'fill') {
+          shapeGcode = getFillGcode(shape);
+        } else if (layer.mode === 'fill+line') {
+          shapeGcode = getFillGcode(shape).concat(getLineGcode(shape));
+        }
+        shapeGcode = shapeGcode.map(line => (line.startsWith('G1') || line.startsWith('G2') || line.startsWith('G3')) ? `${line} F${layer.speed}` : line);
         gcode = gcode.concat(shapeGcode);
       });
       gcode.push('M5 ; Fin du calque');
