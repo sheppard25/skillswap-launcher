@@ -21,9 +21,11 @@ window.addEventListener('DOMContentLoaded', () => {
   const RULER_SIZE = 30;
   const GRID_INTERVAL = 10;
   const WORKSPACE_UNITS = 300;
-  const CANVAS_WIDTH = 600 + RULER_SIZE;
-  const CANVAS_HEIGHT = 600 + RULER_SIZE;
-  const RENDER_SCALE = (CANVAS_WIDTH - RULER_SIZE) / WORKSPACE_UNITS;
+  const WORKSPACE_SVG_WIDTH = 600;
+  const WORKSPACE_SVG_HEIGHT = 600;
+  const CANVAS_WIDTH = WORKSPACE_SVG_WIDTH + RULER_SIZE;
+  const CANVAS_HEIGHT = WORKSPACE_SVG_HEIGHT + RULER_SIZE;
+  const RENDER_SCALE = WORKSPACE_SVG_WIDTH / WORKSPACE_UNITS;
 
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
@@ -141,7 +143,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 0.5;
     for (let x = 0; x <= WORKSPACE_UNITS; x += GRID_INTERVAL) {
-      const xPos = RULER_SIZE + x * RENDER_SCALE;
+      const xPos = x * RENDER_SCALE;
       ctx.beginPath();
       ctx.moveTo(xPos, RULER_SIZE);
       ctx.lineTo(xPos, CANVAS_HEIGHT);
@@ -150,66 +152,73 @@ window.addEventListener('DOMContentLoaded', () => {
     for (let y = 0; y <= WORKSPACE_UNITS; y += GRID_INTERVAL) {
       const yPos = RULER_SIZE + y * RENDER_SCALE;
       ctx.beginPath();
-      ctx.moveTo(RULER_SIZE, yPos);
-      ctx.lineTo(CANVAS_WIDTH, yPos);
+      ctx.moveTo(0, yPos);
+      ctx.lineTo(WORKSPACE_SVG_WIDTH, yPos);
       ctx.stroke();
     }
   }
 
   function drawRulers() {
     ctx.fillStyle = '#3c4049';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, RULER_SIZE);
-    ctx.fillRect(0, 0, RULER_SIZE, CANVAS_HEIGHT);
+    ctx.fillRect(0, 0, WORKSPACE_SVG_WIDTH, RULER_SIZE); // Top ruler
+    ctx.fillRect(WORKSPACE_SVG_WIDTH, 0, RULER_SIZE, CANVAS_HEIGHT); // Right ruler
+
+    ctx.strokeStyle = '#abb2bf';
     ctx.fillStyle = '#abb2bf';
     ctx.font = '10px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    // Top ruler (0 is on the right)
     for (let i = 0; i <= WORKSPACE_UNITS / GRID_INTERVAL; i++) {
-      if ((i * GRID_INTERVAL) % 20 === 0) {
-        // Règle Horizontale (0 à droite)
-        const xPos = RULER_SIZE + i * GRID_INTERVAL * RENDER_SCALE;
-        const label = WORKSPACE_UNITS - (i * GRID_INTERVAL);
-        ctx.beginPath();
-        ctx.moveTo(xPos, RULER_SIZE);
-        ctx.lineTo(xPos, RULER_SIZE - 10);
-        ctx.stroke();
-        if (label >= 0) ctx.fillText(label, xPos, RULER_SIZE / 2);
-
-        // Règle Verticale (0 en haut)
-        const yPos = RULER_SIZE + i * GRID_INTERVAL * RENDER_SCALE;
-        const yLabel = i * GRID_INTERVAL;
-        ctx.beginPath();
-        ctx.moveTo(RULER_SIZE, yPos);
-        ctx.lineTo(RULER_SIZE - 10, yPos);
-        ctx.stroke();
-        if (yLabel > 0) ctx.fillText(yLabel, RULER_SIZE / 2, yPos);
-      }
+        const unit = i * GRID_INTERVAL;
+        if (unit % 20 === 0) {
+            const xPos = WORKSPACE_SVG_WIDTH - (unit * RENDER_SCALE);
+            ctx.beginPath();
+            ctx.moveTo(xPos, RULER_SIZE);
+            ctx.lineTo(xPos, 0);
+            ctx.stroke();
+            if (unit < WORKSPACE_UNITS) ctx.fillText(unit, xPos, RULER_SIZE / 2);
+        }
+    }
+    // Right ruler (0 is at the top)
+    for (let i = 0; i <= WORKSPACE_UNITS / GRID_INTERVAL; i++) {
+        const unit = i * GRID_INTERVAL;
+        if (unit % 20 === 0) {
+            const yPos = RULER_SIZE + unit * RENDER_SCALE;
+            ctx.beginPath();
+            ctx.moveTo(WORKSPACE_SVG_WIDTH, yPos);
+            ctx.lineTo(WORKSPACE_SVG_WIDTH + 10, yPos);
+            ctx.stroke();
+            if (unit > 0) ctx.fillText(unit, WORKSPACE_SVG_WIDTH + RULER_SIZE / 2, yPos);
+        }
     }
   }
 
   function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Workspace background
     ctx.fillStyle = '#fdfdfd';
-    ctx.fillRect(RULER_SIZE, RULER_SIZE, CANVAS_WIDTH - RULER_SIZE, CANVAS_HEIGHT - RULER_SIZE);
+    ctx.fillRect(0, RULER_SIZE, WORKSPACE_SVG_WIDTH, WORKSPACE_SVG_HEIGHT);
+
     drawGrid();
 
     project.shapes.forEach(shape => {
       const layer = project.layers[shape.layerIndex];
       if (!layer) return;
 
-      const offsetX = RULER_SIZE;
+      const offsetX = 0; // Origin is now top-left of workspace area
       const offsetY = RULER_SIZE;
 
       ctx.strokeStyle = layer.color;
       ctx.lineWidth = (shape.id === selectedShapeId) ? 2 : 1;
 
-      const workAreaWidth = CANVAS_WIDTH - RULER_SIZE;
+      const workAreaWidth = WORKSPACE_SVG_WIDTH;
 
       if (shape.type === 'rectangle') {
         const shapeWidth = shape.params.width * RENDER_SCALE;
         const shapeHeight = shape.params.height * RENDER_SCALE;
-        const x = offsetX + workAreaWidth - shapeWidth; // Inversé
+        const x = offsetX + workAreaWidth - shapeWidth; // Inverted X
         const y = offsetY;
         if(layer.mode === 'fill' || layer.mode === 'fill+line') {
             ctx.fillStyle = layer.color + '40';
@@ -218,7 +227,7 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.strokeRect(x, y, shapeWidth, shapeHeight);
       } else if (shape.type === 'circle') {
         const radius = (shape.params.diameter / 2) * RENDER_SCALE;
-        const centerX = offsetX + workAreaWidth - radius; // Inversé
+        const centerX = offsetX + workAreaWidth - radius; // Inverted X
         const centerY = offsetY + radius;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
@@ -233,17 +242,16 @@ window.addEventListener('DOMContentLoaded', () => {
     drawRulers();
   }
 
-  // --- Le reste du code (Sélection, G-code, Logique principale, Écouteurs) est ici ---
-  // ...
+  // --- Logique de Sélection ---
   function getMousePos(canvas, evt) {
     const rect = canvas.getBoundingClientRect();
     return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
   }
 
   function isPointInShape(point, shape) {
-    const offsetX = RULER_SIZE;
+    const offsetX = 0;
     const offsetY = RULER_SIZE;
-    const workAreaWidth = CANVAS_WIDTH - RULER_SIZE;
+    const workAreaWidth = WORKSPACE_SVG_WIDTH;
 
     if (shape.type === 'rectangle') {
       const shapeWidth = shape.params.width * RENDER_SCALE;
@@ -278,6 +286,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSelectionProperties();
   }
 
+  // --- Génération de G-code ---
   function getLineGcode(shape) {
     if (shape.type === 'rectangle') return [`G1 X${shape.params.width} Y0`, `G1 X${shape.params.width} Y${shape.params.height}`, `G1 X0 Y${shape.params.height}`, 'G1 X0 Y0'];
     if (shape.type === 'circle') {
@@ -329,6 +338,7 @@ window.addEventListener('DOMContentLoaded', () => {
     return gcode.join('\n');
   }
 
+  // --- Logique principale ---
   function addShape() {
     if (!project.layers[activeLayer]) {
       project.layers[activeLayer] = {
@@ -355,6 +365,7 @@ window.addEventListener('DOMContentLoaded', () => {
     else if (result.message && !result.message.includes('annulée')) alert(`Erreur: ${result.message}`);
   }
 
+  // --- Initialisation et Écouteurs ---
   updateVisibleParams();
   populatePalette();
   addShapeBtn.addEventListener('click', addShape);
