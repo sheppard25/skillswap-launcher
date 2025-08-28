@@ -18,8 +18,11 @@ window.addEventListener('DOMContentLoaded', () => {
     { index: '28', hex: '#86FA88', name: 'Vert Fluo' }, { index: '29', hex: '#FFDB66', name: 'Jaune Pâle' },
     { index: 'T1', hex: '#F36926', name: 'Outil 1' }, { index: 'T2', hex: '#0C96D9', name: 'Outil 2' }
   ];
-  const RENDER_SCALE = 4;
-  const RENDER_PADDING = 10.5;
+  const RULER_SIZE = 30;
+  const GRID_INTERVAL = 10;
+  const WORKSPACE_WIDTH = 600 + RULER_SIZE;
+  const WORKSPACE_HEIGHT = 600 + RULER_SIZE;
+  const RENDER_SCALE = (WORKSPACE_WIDTH - RULER_SIZE) / 300; // Echelle pour un espace de travail de 300mm
 
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
@@ -36,6 +39,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const shapeRadios = document.querySelectorAll('input[name="shape"]');
   const rectangleParams = document.getElementById('rectangle-params');
   const circleParams = document.getElementById('circle-params');
+  canvas.width = WORKSPACE_WIDTH;
+  canvas.height = WORKSPACE_HEIGHT;
 
   // --- Données du Projet & État de l'UI ---
   let project = { shapes: [], layers: {} };
@@ -105,7 +110,6 @@ window.addEventListener('DOMContentLoaded', () => {
       layerDiv.className = 'layer-item';
       const isToolLayer = layerIndex === 'T1' || layerIndex === 'T2';
       const intervalInputDisplay = layer.mode === 'fill' && !isToolLayer ? 'inline-block' : 'none';
-
       layerDiv.innerHTML = `
         <div class="layer-color" style="background-color: ${layer.color}"></div>
         <div class="layer-details">
@@ -132,46 +136,139 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function drawGrid() {
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; (x * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_WIDTH - RULER_SIZE); x++) {
+      const xPos = RULER_SIZE + x * GRID_INTERVAL * RENDER_SCALE;
+      ctx.beginPath();
+      ctx.moveTo(xPos, RULER_SIZE);
+      ctx.lineTo(xPos, WORKSPACE_HEIGHT);
+      ctx.stroke();
+    }
+    for (let y = 0; (y * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_HEIGHT - RULER_SIZE); y++) {
+      const yPos = RULER_SIZE + y * GRID_INTERVAL * RENDER_SCALE;
+      ctx.beginPath();
+      ctx.moveTo(RULER_SIZE, yPos);
+      ctx.lineTo(WORKSPACE_WIDTH, yPos);
+      ctx.stroke();
+    }
+  }
+
+  function drawRulers() {
+    ctx.fillStyle = '#3c4049';
+    ctx.fillRect(0, 0, WORKSPACE_WIDTH, RULER_SIZE);
+    ctx.fillRect(0, 0, RULER_SIZE, WORKSPACE_HEIGHT);
+
+    ctx.fillStyle = '#abb2bf';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let x = 0; (x * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_WIDTH - RULER_SIZE); x++) {
+      if (x % 5 === 0) { // Major ticks every 50mm (5 * 10mm interval)
+        const pos = RULER_SIZE + x * GRID_INTERVAL * RENDER_SCALE;
+        ctx.beginPath();
+        ctx.moveTo(pos, RULER_SIZE);
+        ctx.lineTo(pos, RULER_SIZE - 10);
+        ctx.stroke();
+        if (x > 0) ctx.fillText(x * GRID_INTERVAL, pos, RULER_SIZE / 2);
+      }
+    }
+    for (let y = 0; (y * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_HEIGHT - RULER_SIZE); y++) {
+      if (y % 5 === 0) {
+        const pos = RULER_SIZE + y * GRID_INTERVAL * RENDER_SCALE;
+        ctx.beginPath();
+        ctx.moveTo(RULER_SIZE, pos);
+        ctx.lineTo(RULER_SIZE - 10, pos);
+        ctx.stroke();
+        if (y > 0) ctx.fillText(y * GRID_INTERVAL, RULER_SIZE / 2, pos);
+      }
+    }
+  }
+
   function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fdfdfd';
+    ctx.fillRect(RULER_SIZE, RULER_SIZE, WORKSPACE_WIDTH - RULER_SIZE, WORKSPACE_HEIGHT - RULER_SIZE);
+
+    drawGrid();
+    drawRulers();
+
     project.shapes.forEach(shape => {
       const layer = project.layers[shape.layerIndex];
       if (!layer) return;
+
+      const offsetX = RULER_SIZE;
+      const offsetY = RULER_SIZE;
+
       ctx.strokeStyle = layer.color;
-      ctx.lineWidth = (shape.id === selectedShapeId) ? 3 : 1;
-      // Fill preview
+      ctx.lineWidth = (shape.id === selectedShapeId) ? 2 : 1;
+
       if (layer.mode === 'fill' || layer.mode === 'fill+line') {
-          ctx.fillStyle = layer.color + '80'; // Add alpha for fill
-          if (shape.type === 'rectangle') {
-            ctx.fillRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
-          }
-          // Note: Circle fill preview not yet implemented, but we can draw the circle filled
-          else if (shape.type === 'circle') {
-            const radius = (shape.params.diameter / 2) * RENDER_SCALE;
-            const centerX = RENDER_PADDING + radius;
-            const centerY = RENDER_PADDING + radius;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.fill();
-          }
+        ctx.fillStyle = layer.color + '40';
+        if (shape.type === 'rectangle') {
+          ctx.fillRect(offsetX, offsetY, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
+        } else if (shape.type === 'circle') {
+          const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+          ctx.beginPath();
+          ctx.arc(offsetX + radius, offsetY + radius, radius, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       }
+
       if (shape.type === 'rectangle') {
-        ctx.strokeRect(RENDER_PADDING, RENDER_PADDING, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
+        ctx.strokeRect(offsetX, offsetY, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
       } else if (shape.type === 'circle') {
         const radius = (shape.params.diameter / 2) * RENDER_SCALE;
-        const centerX = RENDER_PADDING + radius;
-        const centerY = RENDER_PADDING + radius;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.arc(offsetX + radius, offsetY + radius, radius, 0, 2 * Math.PI);
         ctx.stroke();
       }
     });
   }
 
   // --- Logique de Sélection ---
-  function getMousePos(canvas, evt) { /* ... */ }
-  function isPointInShape(point, shape) { /* ... */ }
-  function handleCanvasClick(event) { /* ... */ }
+  function getMousePos(canvas, evt) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+  }
+
+  function isPointInShape(point, shape) {
+    const offsetX = RULER_SIZE;
+    const offsetY = RULER_SIZE;
+    if (shape.type === 'rectangle') {
+      const shapeX = offsetX;
+      const shapeY = offsetY;
+      const shapeWidth = shape.params.width * RENDER_SCALE;
+      const shapeHeight = shape.params.height * RENDER_SCALE;
+      return point.x >= shapeX && point.x <= shapeX + shapeWidth && point.y >= shapeY && point.y <= shapeY + shapeHeight;
+    } else if (shape.type === 'circle') {
+      const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+      const centerX = offsetX + radius;
+      const centerY = offsetY + radius;
+      const dx = point.x - centerX;
+      const dy = point.y - centerY;
+      return (dx * dx + dy * dy) <= (radius * radius);
+    }
+    return false;
+  }
+
+  function handleCanvasClick(event) {
+    const mousePos = getMousePos(canvas, event);
+    let foundShape = false;
+    for (let i = project.shapes.length - 1; i >= 0; i--) {
+      const shape = project.shapes[i];
+      if (isPointInShape(mousePos, shape)) {
+        selectedShapeId = shape.id;
+        foundShape = true;
+        break;
+      }
+    }
+    if (!foundShape) selectedShapeId = null;
+    renderCanvas();
+    updateSelectionProperties();
+  }
 
   // --- Génération de G-code ---
   function getLineGcode(shape) {
@@ -207,26 +304,20 @@ window.addEventListener('DOMContentLoaded', () => {
     let gcode = ['G90', 'G21', '; --- Début du projet ---'];
     const shapesByLayer = {};
     outputShapes.forEach(s => { (shapesByLayer[s.layerIndex] = shapesByLayer[s.layerIndex] || []).push(s); });
-
     Object.keys(shapesByLayer).sort().forEach(layerIndex => {
       const layer = project.layers[layerIndex];
       gcode.push(`\n; Calque ${layerIndex} - Mode: ${layer.mode}, V: ${layer.speed}, P: ${layer.power}`);
       gcode.push(`M4 S${layer.power}`);
       shapesByLayer[layerIndex].forEach(shape => {
         let shapeGcode = [];
-        if (layer.mode === 'line') {
-          shapeGcode = getLineGcode(shape);
-        } else if (layer.mode === 'fill') {
-          shapeGcode = getFillGcode(shape);
-        } else if (layer.mode === 'fill+line') {
-          shapeGcode = getFillGcode(shape).concat(getLineGcode(shape));
-        }
+        if (layer.mode === 'line') shapeGcode = getLineGcode(shape);
+        else if (layer.mode === 'fill') shapeGcode = getFillGcode(shape);
+        else if (layer.mode === 'fill+line') shapeGcode = getFillGcode(shape).concat(getLineGcode(shape));
         shapeGcode = shapeGcode.map(line => (line.startsWith('G1') || line.startsWith('G2') || line.startsWith('G3')) ? `${line} F${layer.speed}` : line);
         gcode = gcode.concat(shapeGcode);
       });
       gcode.push('M5 ; Fin du calque');
     });
-
     gcode.push('\n; --- Fin du projet ---', 'G0 X0 Y0');
     return gcode.join('\n');
   }
@@ -276,4 +367,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   canvas.addEventListener('click', handleCanvasClick);
+  // Premier rendu au chargement
+  renderCanvas();
 });
