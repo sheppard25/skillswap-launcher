@@ -20,9 +20,10 @@ window.addEventListener('DOMContentLoaded', () => {
   ];
   const RULER_SIZE = 30;
   const GRID_INTERVAL = 10;
-  const WORKSPACE_WIDTH = 600 + RULER_SIZE;
-  const WORKSPACE_HEIGHT = 600 + RULER_SIZE;
-  const RENDER_SCALE = (WORKSPACE_WIDTH - RULER_SIZE) / 300; // Echelle pour un espace de travail de 300mm
+  const WORKSPACE_UNITS = 300;
+  const CANVAS_WIDTH = 600 + RULER_SIZE;
+  const CANVAS_HEIGHT = 600 + RULER_SIZE;
+  const RENDER_SCALE = (CANVAS_WIDTH - RULER_SIZE) / WORKSPACE_UNITS;
 
   // --- Récupération des éléments de l'interface ---
   const addShapeBtn = document.getElementById('add-shape-btn');
@@ -39,8 +40,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const shapeRadios = document.querySelectorAll('input[name="shape"]');
   const rectangleParams = document.getElementById('rectangle-params');
   const circleParams = document.getElementById('circle-params');
-  canvas.width = WORKSPACE_WIDTH;
-  canvas.height = WORKSPACE_HEIGHT;
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
 
   // --- Données du Projet & État de l'UI ---
   let project = { shapes: [], layers: {} };
@@ -139,50 +140,50 @@ window.addEventListener('DOMContentLoaded', () => {
   function drawGrid() {
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 0.5;
-    for (let x = 0; (x * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_WIDTH - RULER_SIZE); x++) {
-      const xPos = RULER_SIZE + x * GRID_INTERVAL * RENDER_SCALE;
+    for (let x = 0; x <= WORKSPACE_UNITS; x += GRID_INTERVAL) {
+      const xPos = RULER_SIZE + x * RENDER_SCALE;
       ctx.beginPath();
       ctx.moveTo(xPos, RULER_SIZE);
-      ctx.lineTo(xPos, WORKSPACE_HEIGHT);
+      ctx.lineTo(xPos, CANVAS_HEIGHT);
       ctx.stroke();
     }
-    for (let y = 0; (y * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_HEIGHT - RULER_SIZE); y++) {
-      const yPos = RULER_SIZE + y * GRID_INTERVAL * RENDER_SCALE;
+    for (let y = 0; y <= WORKSPACE_UNITS; y += GRID_INTERVAL) {
+      const yPos = RULER_SIZE + y * RENDER_SCALE;
       ctx.beginPath();
       ctx.moveTo(RULER_SIZE, yPos);
-      ctx.lineTo(WORKSPACE_WIDTH, yPos);
+      ctx.lineTo(CANVAS_WIDTH, yPos);
       ctx.stroke();
     }
   }
 
   function drawRulers() {
     ctx.fillStyle = '#3c4049';
-    ctx.fillRect(0, 0, WORKSPACE_WIDTH, RULER_SIZE);
-    ctx.fillRect(0, 0, RULER_SIZE, WORKSPACE_HEIGHT);
-
+    ctx.fillRect(0, 0, CANVAS_WIDTH, RULER_SIZE);
+    ctx.fillRect(0, 0, RULER_SIZE, CANVAS_HEIGHT);
     ctx.fillStyle = '#abb2bf';
     ctx.font = '10px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    for (let x = 0; (x * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_WIDTH - RULER_SIZE); x++) {
-      if (x % 5 === 0) { // Major ticks every 50mm (5 * 10mm interval)
-        const pos = RULER_SIZE + x * GRID_INTERVAL * RENDER_SCALE;
+    for (let i = 0; i <= WORKSPACE_UNITS / GRID_INTERVAL; i++) {
+      if ((i * GRID_INTERVAL) % 20 === 0) {
+        // Règle Horizontale (0 à droite)
+        const xPos = RULER_SIZE + i * GRID_INTERVAL * RENDER_SCALE;
+        const label = WORKSPACE_UNITS - (i * GRID_INTERVAL);
         ctx.beginPath();
-        ctx.moveTo(pos, RULER_SIZE);
-        ctx.lineTo(pos, RULER_SIZE - 10);
+        ctx.moveTo(xPos, RULER_SIZE);
+        ctx.lineTo(xPos, RULER_SIZE - 10);
         ctx.stroke();
-        if (x > 0) ctx.fillText(x * GRID_INTERVAL, pos, RULER_SIZE / 2);
-      }
-    }
-    for (let y = 0; (y * GRID_INTERVAL * RENDER_SCALE) < (WORKSPACE_HEIGHT - RULER_SIZE); y++) {
-      if (y % 5 === 0) {
-        const pos = RULER_SIZE + y * GRID_INTERVAL * RENDER_SCALE;
+        if (label >= 0) ctx.fillText(label, xPos, RULER_SIZE / 2);
+
+        // Règle Verticale (0 en haut)
+        const yPos = RULER_SIZE + i * GRID_INTERVAL * RENDER_SCALE;
+        const yLabel = i * GRID_INTERVAL;
         ctx.beginPath();
-        ctx.moveTo(RULER_SIZE, pos);
-        ctx.lineTo(RULER_SIZE - 10, pos);
+        ctx.moveTo(RULER_SIZE, yPos);
+        ctx.lineTo(RULER_SIZE - 10, yPos);
         ctx.stroke();
-        if (y > 0) ctx.fillText(y * GRID_INTERVAL, RULER_SIZE / 2, pos);
+        if (yLabel > 0) ctx.fillText(yLabel, RULER_SIZE / 2, yPos);
       }
     }
   }
@@ -190,10 +191,8 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#fdfdfd';
-    ctx.fillRect(RULER_SIZE, RULER_SIZE, WORKSPACE_WIDTH - RULER_SIZE, WORKSPACE_HEIGHT - RULER_SIZE);
-
+    ctx.fillRect(RULER_SIZE, RULER_SIZE, CANVAS_WIDTH - RULER_SIZE, CANVAS_HEIGHT - RULER_SIZE);
     drawGrid();
-    drawRulers();
 
     project.shapes.forEach(shape => {
       const layer = project.layers[shape.layerIndex];
@@ -205,30 +204,37 @@ window.addEventListener('DOMContentLoaded', () => {
       ctx.strokeStyle = layer.color;
       ctx.lineWidth = (shape.id === selectedShapeId) ? 2 : 1;
 
-      if (layer.mode === 'fill' || layer.mode === 'fill+line') {
-        ctx.fillStyle = layer.color + '40';
-        if (shape.type === 'rectangle') {
-          ctx.fillRect(offsetX, offsetY, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
-        } else if (shape.type === 'circle') {
-          const radius = (shape.params.diameter / 2) * RENDER_SCALE;
-          ctx.beginPath();
-          ctx.arc(offsetX + radius, offsetY + radius, radius, 0, 2 * Math.PI);
-          ctx.fill();
-        }
-      }
+      const workAreaWidth = CANVAS_WIDTH - RULER_SIZE;
 
       if (shape.type === 'rectangle') {
-        ctx.strokeRect(offsetX, offsetY, shape.params.width * RENDER_SCALE, shape.params.height * RENDER_SCALE);
+        const shapeWidth = shape.params.width * RENDER_SCALE;
+        const shapeHeight = shape.params.height * RENDER_SCALE;
+        const x = offsetX + workAreaWidth - shapeWidth; // Inversé
+        const y = offsetY;
+        if(layer.mode === 'fill' || layer.mode === 'fill+line') {
+            ctx.fillStyle = layer.color + '40';
+            ctx.fillRect(x, y, shapeWidth, shapeHeight);
+        }
+        ctx.strokeRect(x, y, shapeWidth, shapeHeight);
       } else if (shape.type === 'circle') {
         const radius = (shape.params.diameter / 2) * RENDER_SCALE;
+        const centerX = offsetX + workAreaWidth - radius; // Inversé
+        const centerY = offsetY + radius;
         ctx.beginPath();
-        ctx.arc(offsetX + radius, offsetY + radius, radius, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        if(layer.mode === 'fill' || layer.mode === 'fill+line') {
+            ctx.fillStyle = layer.color + '40';
+            ctx.fill();
+        }
         ctx.stroke();
       }
     });
+
+    drawRulers();
   }
 
-  // --- Logique de Sélection ---
+  // --- Le reste du code (Sélection, G-code, Logique principale, Écouteurs) est ici ---
+  // ...
   function getMousePos(canvas, evt) {
     const rect = canvas.getBoundingClientRect();
     return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
@@ -237,15 +243,17 @@ window.addEventListener('DOMContentLoaded', () => {
   function isPointInShape(point, shape) {
     const offsetX = RULER_SIZE;
     const offsetY = RULER_SIZE;
+    const workAreaWidth = CANVAS_WIDTH - RULER_SIZE;
+
     if (shape.type === 'rectangle') {
-      const shapeX = offsetX;
-      const shapeY = offsetY;
       const shapeWidth = shape.params.width * RENDER_SCALE;
       const shapeHeight = shape.params.height * RENDER_SCALE;
-      return point.x >= shapeX && point.x <= shapeX + shapeWidth && point.y >= shapeY && point.y <= shapeY + shapeHeight;
+      const x1 = offsetX + workAreaWidth - shapeWidth;
+      const y1 = offsetY;
+      return point.x >= x1 && point.x <= x1 + shapeWidth && point.y >= y1 && point.y <= y1 + shapeHeight;
     } else if (shape.type === 'circle') {
       const radius = (shape.params.diameter / 2) * RENDER_SCALE;
-      const centerX = offsetX + radius;
+      const centerX = offsetX + workAreaWidth - radius;
       const centerY = offsetY + radius;
       const dx = point.x - centerX;
       const dy = point.y - centerY;
@@ -270,7 +278,6 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSelectionProperties();
   }
 
-  // --- Génération de G-code ---
   function getLineGcode(shape) {
     if (shape.type === 'rectangle') return [`G1 X${shape.params.width} Y0`, `G1 X${shape.params.width} Y${shape.params.height}`, `G1 X0 Y${shape.params.height}`, 'G1 X0 Y0'];
     if (shape.type === 'circle') {
@@ -322,7 +329,6 @@ window.addEventListener('DOMContentLoaded', () => {
     return gcode.join('\n');
   }
 
-  // --- Logique principale ---
   function addShape() {
     if (!project.layers[activeLayer]) {
       project.layers[activeLayer] = {
@@ -349,7 +355,6 @@ window.addEventListener('DOMContentLoaded', () => {
     else if (result.message && !result.message.includes('annulée')) alert(`Erreur: ${result.message}`);
   }
 
-  // --- Initialisation et Écouteurs ---
   updateVisibleParams();
   populatePalette();
   addShapeBtn.addEventListener('click', addShape);
@@ -367,6 +372,5 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   canvas.addEventListener('click', handleCanvasClick);
-  // Premier rendu au chargement
   renderCanvas();
 });
